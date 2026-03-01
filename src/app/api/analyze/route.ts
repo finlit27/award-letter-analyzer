@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AnalysisResult } from "@/types";
 
+// Allow larger uploads (phone photos can be 5-12MB before client compression)
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: "20mb",
+        },
+    },
+};
+
 /**
  * Robustly clean LLM output to extract valid JSON.
  * Handles markdown code fences, trailing commas, and other common LLM quirks.

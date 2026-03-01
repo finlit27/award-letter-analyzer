@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Allow larger file uploads (phone photos can be 5-12MB)
+  // Default is 4.5MB which is too small for raw phone camera images
+  serverExternalPackages: ["pdfjs-dist"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
+  },
 };
 
 export default nextConfig;
