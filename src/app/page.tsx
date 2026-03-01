@@ -53,8 +53,11 @@ export default function Home() {
             const data = await response.json();
             setResults(data);
         } catch (err) {
-            console.error(err);
-            setError(err instanceof Error ? err.message : "An unexpected error occurred");
+            console.error("[Award Letter Analyzer] Error:", err);
+            console.error("[Award Letter Analyzer] Error type:", typeof err);
+            console.error("[Award Letter Analyzer] Error name:", err instanceof Error ? err.name : "unknown");
+            console.error("[Award Letter Analyzer] Error message:", err instanceof Error ? err.message : String(err));
+            setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");
         } finally {
             setIsAnalyzing(false);
             setStatusMessage("");
