@@ -31,6 +31,7 @@ export function FileUpload({ files, onFilesSelected, isUploading = false }: File
             'application/pdf': ['.pdf'],
             'image/png': ['.png'],
             'image/jpeg': ['.jpg', '.jpeg'],
+            'image/webp': ['.webp'],
             'image/heic': ['.heic'],
             'image/heif': ['.heif']
         },
@@ -49,7 +50,7 @@ export function FileUpload({ files, onFilesSelected, isUploading = false }: File
                     isUploading && "pointer-events-none opacity-50"
                 )}
             >
-                <input {...getInputProps()} />
+                <input {...getInputProps()} capture="environment" />
 
                 <div className="flex flex-col items-center justify-center text-center space-y-4">
                     <div className={cn(
@@ -63,10 +64,10 @@ export function FileUpload({ files, onFilesSelected, isUploading = false }: File
                             {isDragActive ? "Drop files here" : "Upload Award Letters"}
                         </h3>
                         <p className="text-sm text-slate-500 mt-1">
-                            Drag & drop PDFs, screenshots, or photos of award letters
+                            Drag & drop PDFs, screenshots, or take a photo 📸
                         </p>
                         <p className="text-xs text-slate-400 mt-2">
-                            Accepts: PDF, PNG, JPG, HEIC
+                            Accepts: PDF, PNG, JPG, WebP, HEIC · PDFs auto-convert to images
                         </p>
                     </div>
                 </div>

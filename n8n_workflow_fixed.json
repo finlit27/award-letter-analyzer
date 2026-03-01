@@ -1,0 +1,95 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "award-letter-batch-analysis",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "pdfFile",
+          "rawBody": false
+        }
+      },
+      "id": "b70e5048-a039-4097-a6cc-2f36929e803e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [16, -32],
+      "webhookId": "award-letter-batch-webhook"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "image",
+              "imageType": "base64"
+            },
+            {
+              "content": "=You are a college financial aid analyst. Analyze this award letter image.\nSTEP 1: IDENTIFY EACH LINE ITEM\nRead the award letter and list every financial aid item individually. For each item, determine its TYPE based on keywords:\nGIFT AID (Free Money - does NOT need to be repaid):\n- Keywords: \"Grant\", \"Scholarship\", \"Award\", \"Merit\", \"SEOG\", \"Pell\", \"TAP\"\n- Examples: University Grant, Presidential Scholarship, Federal Pell Grant, State Grant\nLOANS (Debt - MUST be repaid with interest):\n- Keywords: \"Loan\", \"Subsidized\", \"Unsubsidized\", \"PLUS\", \"Direct\", \"Perkins\"\n- Examples: Federal Direct Subsidized Loan, Parent PLUS Loan\n- NEVER include loans in gift aid totals\nWORK-STUDY (Earned Money - student must work for it):\n- Keywords: \"Work-Study\", \"Work Study\", \"Employment\", \"FWS\"\n- This is NOT free money - the student must work a job to earn it\n- NEVER include work-study in gift aid totals\nSTEP 2: CALCULATE CORRECTLY\n- Total Gift Aid = ONLY grants + scholarships (NO loans, NO work-study)\n- Net Price = Total Cost of Attendance - Total Gift Aid\n- Out of Pocket = Net Price (what family pays, loans are OPTIONAL debt)\nSTEP 3: EXTRACT EXACT NUMBERS\nUse the EXACT dollar amounts shown. Do NOT add items together incorrectly.\nIf tuition/housing breakdown isn't shown, estimate from total cost.\nReturn ONLY valid JSON (no markdown, no code blocks):\n[{\n  \"college_name\": \"Name from letterhead\",\n  \"total_cost_of_attendance\": NUMBER,\n  \"direct_costs\": {\"tuition\": NUMBER, \"housing\": NUMBER, \"fees\": NUMBER},\n  \"grants_scholarships\": {\n    \"institutional_merit\": NUMBER,\n    \"pell_grant\": NUMBER,\n    \"state_grant\": NUMBER,\n    \"total_gift_aid\": NUMBER\n  },\n  \"loans\": {\n    \"federal_subsidized\": NUMBER,\n    \"federal_unsubsidized\": NUMBER,\n    \"parent_plus\": NUMBER,\n    \"private_loans\": NUMBER\n  },\n  \"work_study\": NUMBER,\n  \"net_price\": NUMBER,\n  \"out_of_pocket_payment\": NUMBER,\n  \"analysis\": {\"debt_warning\": \"Low|Medium|High|Critical\", \"value_score\": NUMBER}\n}]\nCRITICAL CHECKS BEFORE OUTPUT:\n1. Is \"Loan\" or \"Subsidized/Unsubsidized\" in the name? -> Put in LOANS, not gift aid\n2. Is \"Work-Study\" or \"Employment\" in the name? -> Put in work_study, not gift aid\n3. Does total_gift_aid ONLY include grants and scholarships?\n4. Is net_price = total_cost - total_gift_aid? (should NOT be $0 unless college is free)\nDebt Warning:\n- Low: Loans < $5,000/year, no Parent PLUS\n- Medium: Loans $5,000-10,000/year\n- High: Loans > $10,000/year or Net Price > $30,000\n- Critical: Parent PLUS included or Net Price > $50,000\nOUTPUT ONLY THE JSON."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [240, -32],
+      "id": "fbd7b5af-e359-465f-94a8-8695b6b1dd1b",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "rsgGYvWL56ZDduQr",
+          "name": "Award Letter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [480, -32],
+      "id": "ecae495d-259e-4a23-bdc0-d55dcff8fe77",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "61b9808adf6924c3f9559f4b4c568ca9e38c86c7f8bf09d9a4576322483a3089"
+  }
+}

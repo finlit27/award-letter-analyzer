@@ -7,10 +7,12 @@ import { AnalysisResult } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf } from "lucide-react";
 import { motion } from "framer-motion";
+import { convertFilesForVision } from "@/lib/file-converter";
 
 export default function Home() {
     const [files, setFiles] = useState<File[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [statusMessage, setStatusMessage] = useState<string>("");
     const [results, setResults] = useState<AnalysisResult[] | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -19,16 +21,25 @@ export default function Home() {
 
         setIsAnalyzing(true);
         setError(null);
-
-        const formData = new FormData();
-        formData.append("parentEmail", "guest@example.com");
-        formData.append("studentName", "Guest Student");
-
-        files.forEach((file) => {
-            formData.append("pdfFile", file);
-        });
+        setStatusMessage("Preparing files...");
 
         try {
+            // Step 1: Convert PDFs and HEIC to images that GPT-4o can read
+            const convertedFiles = await convertFilesForVision(files, (msg) => {
+                setStatusMessage(msg);
+            });
+
+            setStatusMessage("Analyzing award letters...");
+
+            // Step 2: Send converted image files to the API
+            const formData = new FormData();
+            formData.append("parentEmail", "guest@example.com");
+            formData.append("studentName", "Guest Student");
+
+            convertedFiles.forEach((file) => {
+                formData.append("pdfFile", file);
+            });
+
             const response = await fetch("/api/analyze", {
                 method: "POST",
                 body: formData,
@@ -46,6 +57,7 @@ export default function Home() {
             setError(err instanceof Error ? err.message : "An unexpected error occurred");
         } finally {
             setIsAnalyzing(false);
+            setStatusMessage("");
         }
     };
 
@@ -131,7 +143,7 @@ export default function Home() {
                                 {isAnalyzing ? (
                                     <>
                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                        Analyzing...
+                                        {statusMessage || "Analyzing..."}
                                     </>
                                 ) : (
                                     <>
