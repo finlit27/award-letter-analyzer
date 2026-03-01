@@ -70,11 +70,11 @@ async function convertPdfToImages(file: File): Promise<File[]> {
 }
 
 /**
- * Convert an HEIC/HEIF image to JPEG using Canvas.
- * Modern browsers (Safari, Chrome) can render HEIC natively.
- * If the browser doesn't support it, just pass through and let the API try.
+ * Normalize any image to JPEG via Canvas.
+ * This is the universal fix for mobile — works for HEIC, BMP,
+ * and any other format the browser can render.
  */
-async function convertHeicToJpeg(file: File): Promise<File> {
+async function normalizeImageToJpeg(file: File): Promise<File> {
     return new Promise<File>((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
@@ -97,10 +97,10 @@ async function convertHeicToJpeg(file: File): Promise<File> {
             canvas.toBlob(
                 (blob) => {
                     if (blob) {
-                        const newName = file.name.replace(/\.hei[cf]$/i, ".jpg");
+                        const newName = file.name.replace(/\.[^.]+$/, ".jpg");
                         resolve(new File([blob], newName, { type: "image/jpeg" }));
                     } else {
-                        reject(new Error("HEIC conversion failed"));
+                        reject(new Error("Image conversion failed"));
                     }
                 },
                 "image/jpeg",
@@ -110,9 +110,9 @@ async function convertHeicToJpeg(file: File): Promise<File> {
 
         img.onerror = () => {
             URL.revokeObjectURL(url);
-            // If the browser can't render HEIC, return the original file
+            // If the browser can't render the image at all, return original
             // and let the backend deal with it
-            console.warn("Browser cannot render HEIC, passing through original file");
+            console.warn(`Browser cannot render ${file.name}, passing through`);
             resolve(file);
         };
 
@@ -120,11 +120,19 @@ async function convertHeicToJpeg(file: File): Promise<File> {
     });
 }
 
+/** MIME types that GPT-4o vision API definitely supports */
+const SUPPORTED_VISION_TYPES = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+]);
+
 /**
  * Process files for upload:
  * - PDFs → converted to PNG images (one per page)
- * - HEIC/HEIF → converted to JPEG
- * - Other images → passed through unchanged
+ * - Unsupported image formats (HEIC, BMP, empty type) → normalized to JPEG
+ * - Standard formats (PNG, JPEG, WebP, GIF) → passed through unchanged
  * 
  * @returns Array of image Files ready for the vision API
  */
@@ -139,6 +147,7 @@ export async function convertFilesForVision(
         const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
         if (type === "application/pdf" || ext === "pdf") {
+            // PDF → render pages to PNG
             onProgress?.(`Converting ${file.name} from PDF to image...`);
             try {
                 const images = await convertPdfToImages(file);
@@ -150,26 +159,24 @@ export async function convertFilesForVision(
                     `Could not convert "${file.name}" from PDF. Please take a screenshot or photo of the award letter instead.`
                 );
             }
-        } else if (
-            type === "image/heic" ||
-            type === "image/heif" ||
-            ext === "heic" ||
-            ext === "heif"
-        ) {
-            onProgress?.(`Converting ${file.name} from HEIC to JPEG...`);
+        } else if (SUPPORTED_VISION_TYPES.has(type)) {
+            // Standard web image — pass through, no conversion needed
+            result.push(file);
+        } else {
+            // HEIC, BMP, empty type, or any other format — normalize to JPEG
+            onProgress?.(`Converting ${file.name} to compatible format...`);
             try {
-                const converted = await convertHeicToJpeg(file);
+                const converted = await normalizeImageToJpeg(file);
                 result.push(converted);
+                onProgress?.(`Converted ${file.name}`);
             } catch (err) {
-                console.error(`Failed to convert HEIC ${file.name}:`, err);
-                // Push original as fallback
+                console.error(`Failed to convert ${file.name}:`, err);
+                // Push original as last resort
                 result.push(file);
             }
-        } else {
-            // Standard image format (PNG, JPG, WebP) - pass through
-            result.push(file);
         }
     }
 
     return result;
 }
+

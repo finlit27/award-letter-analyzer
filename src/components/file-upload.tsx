@@ -29,11 +29,7 @@ export function FileUpload({ files, onFilesSelected, isUploading = false }: File
         onDrop,
         accept: {
             'application/pdf': ['.pdf'],
-            'image/png': ['.png'],
-            'image/jpeg': ['.jpg', '.jpeg'],
-            'image/webp': ['.webp'],
-            'image/heic': ['.heic'],
-            'image/heif': ['.heif']
+            'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif', '.gif', '.bmp']
         },
         disabled: isUploading
     });
@@ -50,7 +46,7 @@ export function FileUpload({ files, onFilesSelected, isUploading = false }: File
                     isUploading && "pointer-events-none opacity-50"
                 )}
             >
-                <input {...getInputProps()} capture="environment" />
+                <input {...getInputProps()} />
 
                 <div className="flex flex-col items-center justify-center text-center space-y-4">
                     <div className={cn(
