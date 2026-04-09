@@ -7,6 +7,7 @@ import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { FilePreviewList, type FilePreviewItem } from "@/components/upload/FilePreview";
+import { DashboardShell } from "@/components/results/DashboardShell";
 import { prepFiles, releasePreviews } from "@/lib/image-prep-client";
 import { useAnalyzeStream } from "@/lib/use-analyze-stream";
 
@@ -23,9 +24,11 @@ export default function Home() {
   const isBusy = prepping || isAnalyzing;
 
   // When the stream finishes with a shareId, navigate to the share page.
+  // Small delay so the user can see the streamed dashboard land.
   useEffect(() => {
     if (state.status === "done" && state.shareId) {
-      router.push(`/analyze/${state.shareId}`);
+      const t = setTimeout(() => router.push(`/analyze/${state.shareId}`), 1500);
+      return () => clearTimeout(t);
     }
   }, [state.status, state.shareId, router]);
 
@@ -237,6 +240,19 @@ export default function Home() {
             </div>
           )}
         </motion.div>
+
+        {state.results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-6xl mx-auto mt-10"
+          >
+            <DashboardShell
+              letters={state.results.map((r) => r.letter)}
+              errors={state.errors.map((e) => `${e.fileName}: ${e.error}`)}
+            />
+          </motion.div>
+        )}
 
         <p className="text-center text-[#9CA3AF] text-sm mt-12 pb-8">
           © 2026 FinLit Garden. Helping students graduate debt-free.
