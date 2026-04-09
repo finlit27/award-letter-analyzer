@@ -1,197 +1,169 @@
-import { NextRequest, NextResponse } from "next/server";
-import { AnalysisResult } from "@/types";
+import { NextRequest } from "next/server";
+import pLimit from "p-limit";
+import { AwardLetterSchema, type AwardLetter } from "@/lib/schema";
+import { prepImage } from "@/lib/image-prep-server";
+import { saveAnalysis } from "@/lib/kv";
+import { sseStream, sseHeaders } from "@/lib/sse";
 
-// Allow larger uploads (phone photos can be 5-12MB before client compression)
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: "20mb",
-        },
-    },
-};
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const N8N_TIMEOUT_MS = 55_000;
+const PARALLEL_LIMIT = 3;
 
 /**
- * Robustly clean LLM output to extract valid JSON.
- * Handles markdown code fences, trailing commas, and other common LLM quirks.
+ * Robustly extract JSON from an LLM response.
+ * Handles markdown fences, leading/trailing prose, trailing commas.
  */
 function cleanLLMJson(raw: string): string {
-    let text = raw.trim();
-
-    // Remove markdown code fences (```json ... ``` or ``` ... ```)
-    // Handle cases where the fence appears anywhere, not just at the start
-    text = text.replace(/```json\s*\n?/gi, "");
-    text = text.replace(/```\s*/g, "");
-    text = text.trim();
-
-    // Remove any leading/trailing text outside of JSON structure
-    // Find the first [ or { and the last ] or }
-    const firstBracket = text.search(/[\[{]/);
-    const lastBracket = Math.max(text.lastIndexOf("]"), text.lastIndexOf("}"));
-
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-        text = text.substring(firstBracket, lastBracket + 1);
-    }
-
-    // Remove trailing commas before closing brackets (common LLM mistake)
-    text = text.replace(/,\s*([\]}])/g, "$1");
-
-    return text;
+  let text = raw.trim();
+  text = text.replace(/```json\s*\n?/gi, "").replace(/```\s*/g, "").trim();
+  const first = text.search(/[\[{]/);
+  const last = Math.max(text.lastIndexOf("]"), text.lastIndexOf("}"));
+  if (first !== -1 && last > first) text = text.substring(first, last + 1);
+  return text.replace(/,\s*([\]}])/g, "$1");
 }
 
-/**
- * Fetch with a timeout to prevent hanging requests.
- */
-async function fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeoutMs: number = 120000
-): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+interface AnalyzeOk {
+  ok: true;
+  fileName: string;
+  letter: AwardLetter;
+}
+interface AnalyzeErr {
+  ok: false;
+  fileName: string;
+  error: string;
+}
+type AnalyzeOutcome = AnalyzeOk | AnalyzeErr;
 
+async function analyzeOne(file: File, webhookUrl: string): Promise<AnalyzeOutcome> {
+  const fileName = file.name || "unknown";
+  try {
+    // Server-side normalize: EXIF rotate, resize, JPEG re-encode.
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    const prepped = await prepImage(inputBuffer);
+
+    // Forward to n8n as multipart with the field name the workflow expects.
+    const blob = new Blob([new Uint8Array(prepped.buffer)], { type: prepped.mime });
+    const fd = new FormData();
+    fd.append("pdfFile", blob, fileName.replace(/\.[^.]+$/, "") + ".jpg");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), N8N_TIMEOUT_MS);
+
+    let response: Response;
     try {
-        const response = await fetch(url, {
-            ...options,
-            signal: controller.signal,
-        });
-        return response;
+      response = await fetch(webhookUrl, {
+        method: "POST",
+        body: fd,
+        signal: controller.signal,
+      });
     } finally {
-        clearTimeout(timeoutId);
+      clearTimeout(timeout);
     }
+
+    if (!response.ok) {
+      return { ok: false, fileName, error: `n8n HTTP ${response.status}` };
+    }
+
+    const text = await response.text();
+    if (!text.trim()) {
+      return { ok: false, fileName, error: "empty response from n8n" };
+    }
+
+    // n8n may return `{...}` or wrapped in fences/array — be permissive.
+    const cleaned = cleanLLMJson(text);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return { ok: false, fileName, error: "invalid JSON from n8n" };
+    }
+    // Unwrap single-element array.
+    const candidate = Array.isArray(parsed) ? parsed[0] : parsed;
+
+    const result = AwardLetterSchema.safeParse(candidate);
+    if (!result.success) {
+      return { ok: false, fileName, error: "schema validation failed" };
+    }
+    return { ok: true, fileName, letter: result.data };
+  } catch (err) {
+    const msg =
+      err instanceof DOMException && err.name === "AbortError"
+        ? "timeout"
+        : err instanceof Error
+          ? err.message
+          : "unknown error";
+    return { ok: false, fileName, error: msg };
+  }
 }
 
 export async function POST(req: NextRequest) {
-    try {
-        const formData = await req.formData();
+  const webhookUrl = process.env.N8N_WEBHOOK_URL_V2;
+  if (!webhookUrl) {
+    return new Response(
+      JSON.stringify({ error: "N8N_WEBHOOK_URL_V2 not configured" }),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
+  }
 
-        const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
+  const formData = await req.formData();
+  const files: File[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (key === "pdfFile" && value instanceof File) files.push(value);
+  }
 
-        if (!N8N_WEBHOOK_URL) {
-            return NextResponse.json(
-                { error: "Server configuration error. Please contact support.", details: "N8N_WEBHOOK_URL is not configured." },
-                { status: 500 }
-            );
-        }
+  if (files.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "No files provided" }),
+      { status: 400, headers: { "content-type": "application/json" } },
+    );
+  }
 
-        // Get all files from the form data
-        const files: File[] = [];
-        for (const [key, value] of formData.entries()) {
-            if (key === "pdfFile" && value instanceof File) {
-                files.push(value);
-            }
-        }
+  const { stream, send, close } = sseStream();
 
-        if (files.length === 0) {
-            return NextResponse.json(
-                { error: "No files provided. Please upload at least one award letter." },
-                { status: 400 }
-            );
-        }
+  // Run async; the route returns the stream immediately.
+  (async () => {
+    send("start", { total: files.length });
 
-        console.log(`[Award Letter Analyzer] Processing ${files.length} file(s)...`);
+    const limit = pLimit(PARALLEL_LIMIT);
+    const results: AwardLetter[] = [];
+    const errors: string[] = [];
+    let completed = 0;
 
-        // Process each file separately and collect results
-        const allResults: AnalysisResult[] = [];
-        const errors: string[] = [];
+    await Promise.all(
+      files.map((file) =>
+        limit(async () => {
+          const outcome = await analyzeOne(file, webhookUrl);
+          completed += 1;
+          if (outcome.ok) {
+            results.push(outcome.letter);
+            send("result", { fileName: outcome.fileName, letter: outcome.letter, completed, total: files.length });
+          } else {
+            errors.push(`${outcome.fileName}: ${outcome.error}`);
+            send("error", { fileName: outcome.fileName, error: outcome.error, completed, total: files.length });
+          }
+        }),
+      ),
+    );
 
-        for (const file of files) {
-            try {
-                console.log(`[Processing] ${file.name} (${(file.size / 1024).toFixed(1)} KB, type: ${file.type})`);
-
-                // Create form data for this single file
-                const singleFileFormData = new FormData();
-                singleFileFormData.append("parentEmail", "guest@example.com");
-                singleFileFormData.append("studentName", "Guest Student");
-                singleFileFormData.append("pdfFile", file);
-
-                const n8nResponse = await fetchWithTimeout(N8N_WEBHOOK_URL, {
-                    method: "POST",
-                    body: singleFileFormData,
-                }, 120000); // 2 minute timeout per file
-
-                console.log(`[n8n Response] ${file.name}: Status ${n8nResponse.status}`);
-
-                if (!n8nResponse.ok) {
-                    const errorText = await n8nResponse.text();
-                    console.error(`[n8n Error] ${file.name}:`, errorText);
-
-                    if (n8nResponse.status === 404) {
-                        errors.push(`${file.name}: Webhook not found. The n8n workflow may be inactive.`);
-                    } else if (n8nResponse.status === 500) {
-                        errors.push(`${file.name}: AI processing failed. Please try again.`);
-                    } else {
-                        errors.push(`${file.name}: ${n8nResponse.statusText}`);
-                    }
-                    continue;
-                }
-
-                const responseText = await n8nResponse.text();
-                console.log(`[n8n Response] ${file.name} (first 300 chars):`, responseText.substring(0, 300));
-
-                if (!responseText || responseText.trim() === "") {
-                    errors.push(`${file.name}: Empty response from AI. The image may be unclear.`);
-                    continue;
-                }
-
-                // Clean and parse the JSON response
-                const cleanedText = cleanLLMJson(responseText);
-                console.log(`[Cleaned JSON] ${file.name} (first 300 chars):`, cleanedText.substring(0, 300));
-
-                try {
-                    const data = JSON.parse(cleanedText);
-
-                    // Handle both array and single object responses
-                    if (Array.isArray(data)) {
-                        allResults.push(...data);
-                    } else {
-                        allResults.push(data);
-                    }
-
-                    console.log(`[Success] ${file.name}: Parsed ${Array.isArray(data) ? data.length : 1} result(s)`);
-                } catch (parseError) {
-                    console.error(`[JSON Parse Error] ${file.name}:`, parseError);
-                    console.error(`[Raw Response] ${file.name}:`, responseText);
-                    errors.push(`${file.name}: Could not read AI response. Please try re-uploading.`);
-                }
-            } catch (fileError) {
-                console.error(`[File Error] ${file.name}:`, fileError);
-
-                if (fileError instanceof DOMException && fileError.name === "AbortError") {
-                    errors.push(`${file.name}: Request timed out. The file may be too large or the AI is busy.`);
-                } else {
-                    errors.push(`${file.name}: ${fileError instanceof Error ? fileError.message : "Unknown error"}`);
-                }
-            }
-        }
-
-        // Log summary
-        console.log(`[Summary] Processed ${files.length} file(s). Results: ${allResults.length}, Errors: ${errors.length}`);
-        if (errors.length > 0) {
-            console.log(`[Errors]`, errors);
-        }
-
-        if (allResults.length === 0) {
-            return NextResponse.json(
-                {
-                    error: "Failed to analyze any files. Please check that you uploaded clear images of award letters.",
-                    details: errors.join("; ")
-                },
-                { status: 502 }
-            );
-        }
-
-        // Return all results as an array
-        return NextResponse.json(allResults);
-
-    } catch (error) {
-        console.error("[Fatal Error] Analysis API:", error);
-        return NextResponse.json(
-            {
-                error: "Something went wrong. Please try again.",
-                details: error instanceof Error ? error.message : "Unknown"
-            },
-            { status: 500 }
-        );
+    let shareId: string | null = null;
+    if (results.length > 0) {
+      try {
+        shareId = await saveAnalysis({ results, errors });
+      } catch (err) {
+        // Persistence failure shouldn't kill the response — user still gets results.
+        console.error("[KV save failed]", err);
+      }
     }
-}
 
+    send("done", { shareId, results, errors });
+    close();
+  })().catch((err) => {
+    console.error("[analyze stream fatal]", err);
+    send("fatal", { error: err instanceof Error ? err.message : "unknown" });
+    close();
+  });
+
+  return new Response(stream, { headers: sseHeaders });
+}
