@@ -10,6 +10,7 @@ import { FilePreviewList, type FilePreviewItem } from "@/components/upload/FileP
 import { DashboardShell } from "@/components/results/DashboardShell";
 import { prepFiles, releasePreviews } from "@/lib/image-prep-client";
 import { useAnalyzeStream } from "@/lib/use-analyze-stream";
+import { trackEvent } from "@/lib/analytics";
 
 export default function Home() {
   const [items, setItems] = useState<FilePreviewItem[]>([]);
@@ -26,11 +27,21 @@ export default function Home() {
   // When the stream finishes with a shareId, navigate to the share page.
   // Small delay so the user can see the streamed dashboard land.
   useEffect(() => {
-    if (state.status === "done" && state.shareId) {
-      const t = setTimeout(() => router.push(`/analyze/${state.shareId}`), 1500);
-      return () => clearTimeout(t);
+    if (state.status === "done") {
+      if (state.results.length > 0) {
+        trackEvent("analyze_succeeded", {
+          letters: state.results.length,
+          errors: state.errors.length,
+        });
+      } else {
+        trackEvent("analyze_failed", { reason: state.fatalError ?? "no_results" });
+      }
+      if (state.shareId) {
+        const t = setTimeout(() => router.push(`/analyze/${state.shareId}`), 1500);
+        return () => clearTimeout(t);
+      }
     }
-  }, [state.status, state.shareId, router]);
+  }, [state.status, state.shareId, state.results.length, state.errors.length, state.fatalError, router]);
 
   // Update per-item status as results stream in.
   useEffect(() => {
@@ -77,6 +88,7 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (items.length === 0) return;
+    trackEvent("upload_started", { count: items.length });
     // Mark all idle items as analyzing.
     setItems((prev) => prev.map((p) => ({ ...p, status: "analyzing" as const })));
     await start(items.map((p) => p.file));
