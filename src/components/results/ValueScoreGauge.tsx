@@ -22,7 +22,7 @@ export function ValueScoreGauge({ score, size = 80 }: Props) {
     clamped >= 75 ? "Excellent value" : clamped >= 50 ? "Good value" : clamped >= 25 ? "Fair value" : "Poor value";
 
   return (
-    <div className="inline-flex flex-col items-center" aria-label={`Value score ${clamped} out of 100. ${label}.`}>
+    <div className="relative inline-flex flex-col items-center" aria-label={`Value score ${clamped} out of 100. ${label}.`}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -46,8 +46,7 @@ export function ValueScoreGauge({ score, size = 80 }: Props) {
         />
       </svg>
       <div
-        className={cn("absolute pointer-events-none flex flex-col items-center justify-center")}
-        style={{ width: size, height: size, marginTop: -size }}
+        className={cn("absolute inset-0 pointer-events-none flex flex-col items-center justify-center")}
       >
         <span className="text-2xl font-bold text-[#1B4332] font-serif">{clamped}</span>
         <span className="text-[10px] text-[#6B7280] uppercase tracking-wider">Value</span>
