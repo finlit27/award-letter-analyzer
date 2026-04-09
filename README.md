@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Award Letter Analyzer
 
-## Getting Started
+Upload college financial aid award letters → get a side-by-side CFO-style comparison.
+Built for [FinLit Garden](https://finlitgarden.com).
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · React 19 · Tailwind v4 · Zod · Upstash Redis · n8n + Anthropic Claude (Haiku 4.5 with Sonnet 4.6 fallback) · Vercel Pro.
+
+## Local setup
 
 ```bash
+npm install
+cp .env.example .env.local   # then fill in values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Var | Where | Purpose |
+|---|---|---|
+| `N8N_WEBHOOK_URL_V2` | Vercel + local | URL of the v2 n8n webhook (Haiku → Sonnet fallback) |
+| `UPSTASH_REDIS_REST_URL` | Vercel (Marketplace integration) | KV store for shareable analyses |
+| `UPSTASH_REDIS_REST_TOKEN` | Vercel (Marketplace integration) | KV auth |
+| `ANTHROPIC_API_KEY` | **n8n credentials**, not Vercel | Used by the n8n workflow's Claude HTTP nodes |
 
-## Learn More
+## n8n workflow
 
-To learn more about Next.js, take a look at the following resources:
+1. In n8n, **Workflows → Import from File** → pick `n8n/v2-workflow.json`.
+2. Open both Claude HTTP nodes and select your Anthropic credential.
+3. Activate the workflow.
+4. Note the production webhook URL (`/webhook/v2/award-letter-batch-analysis`) and put it in `N8N_WEBHOOK_URL_V2`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Smoke test:
+```bash
+curl -X POST "$N8N_WEBHOOK_URL_V2" -F "pdfFile=@some-letter.jpg"
+```
+Expected: a JSON object matching `AwardLetterSchema` in `src/lib/schema.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+npm run dev      # local dev server
+npm run build    # production build
+npm test         # vitest unit + integration
+npm run lint     # eslint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+Browser ──upload──▶ /api/analyze (SSE, Node runtime, 60s)
+                         │
+                         ├─ sharp prep (rotate, resize, JPEG)
+                         ├─ p-limit(3) ──▶ n8n v2 webhook ──▶ Anthropic
+                         ├─ Zod validate
+                         ├─ Upstash Redis save (30-day TTL)
+                         └─ stream { result | error | done } events
+                                                 │
+                                                 ▼
+                                /analyze/[shareId] (server component)
+```
+
+Source layout:
+
+```
+src/app/                  Next.js routes
+src/app/api/analyze       SSE upload + analyze pipeline
+src/app/api/share/[id]    KV read endpoint
+src/app/analyze/[id]      Shareable dashboard page
+src/components/upload     Dropzone, FilePreview
+src/components/results    ComparisonTable, charts, gauges
+src/lib                   schema, money, projection, kv, sse, image-prep, analytics
+n8n                       Workflow JSON
+tests/unit                Vitest unit tests
+tests/integration         Vitest integration tests (mocked fetch + redis)
+```
+
+## Deploy
+
+Wired for Vercel. The `tier2-upgrade` branch ships:
+
+- 60s function timeout (`maxDuration = 60`)
+- SSE streaming via Node runtime
+- Vercel Analytics (`@vercel/analytics`)
+- Upstash Redis via Vercel Marketplace integration
+
+To cut over: merge `tier2-upgrade` → `main`, ensure env vars are set in **Production**, redeploy. Keep the v1 n8n workflow active for rollback.
