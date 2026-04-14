@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status !== "paid") {
+    // "no_payment_required" is Stripe's status when a 100% promo code is applied.
+    if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
       return NextResponse.redirect(new URL("/?checkout=unpaid", origin));
     }
 
