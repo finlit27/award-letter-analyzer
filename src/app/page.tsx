@@ -3,23 +3,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf, Sparkles, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { FilePreviewList, type FilePreviewItem } from "@/components/upload/FilePreview";
+import { PaymentGate } from "@/components/upload/PaymentGate";
 import { DashboardShell } from "@/components/results/DashboardShell";
 import { prepFiles, releasePreviews } from "@/lib/image-prep-client";
 import { useAnalyzeStream } from "@/lib/use-analyze-stream";
 import { trackEvent } from "@/lib/analytics";
+
+interface AccessState {
+  paid: boolean;
+  freeUsed: boolean;
+  canAnalyzeFree: boolean;
+}
 
 export default function Home() {
   const [items, setItems] = useState<FilePreviewItem[]>([]);
   const [prepping, setPrepping] = useState(false);
   const [prepStatus, setPrepStatus] = useState("");
   const [prepError, setPrepError] = useState<string | null>(null);
+  const [access, setAccess] = useState<AccessState | null>(null);
+  const [showGate, setShowGate] = useState(false);
   const router = useRouter();
 
   const { state, start } = useAnalyzeStream();
+
+  // Load access state on mount.
+  useEffect(() => {
+    fetch("/api/access")
+      .then((r) => r.json())
+      .then((data: AccessState) => setAccess(data))
+      .catch(() => setAccess({ paid: false, freeUsed: false, canAnalyzeFree: true }));
+  }, []);
 
   const isAnalyzing = state.status === "uploading" || state.status === "streaming";
   const isBusy = prepping || isAnalyzing;
@@ -33,6 +50,12 @@ export default function Home() {
           letters: state.results.length,
           errors: state.errors.length,
         });
+        // If the user is on the free tier and just got a real result, consume the free slot.
+        if (access && !access.paid && !access.freeUsed) {
+          fetch("/api/access", { method: "POST" })
+            .then(() => setAccess({ paid: false, freeUsed: true, canAnalyzeFree: false }))
+            .catch(() => {});
+        }
       } else {
         trackEvent("analyze_failed", { reason: state.fatalError ?? "no_results" });
       }
@@ -41,7 +64,7 @@ export default function Home() {
         return () => clearTimeout(t);
       }
     }
-  }, [state.status, state.shareId, state.results.length, state.errors.length, state.fatalError, router]);
+  }, [state.status, state.shareId, state.results.length, state.errors.length, state.fatalError, router, access]);
 
   // Update per-item status as results stream in.
   useEffect(() => {
@@ -88,6 +111,23 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (items.length === 0) return;
+
+    // Freemium gate logic:
+    //  - Paid users: unlimited (up to dropzone's own 10-file cap).
+    //  - Free, unused: 1 letter allowed for free. 2+ shows the gate.
+    //  - Free, already used: any analysis shows the gate.
+    if (access && !access.paid) {
+      const isMultiCompare = items.length > 1;
+      if (access.freeUsed || isMultiCompare) {
+        setShowGate(true);
+        trackEvent("gate_shown", {
+          reason: access.freeUsed ? "free_exhausted" : "multi_compare",
+          fileCount: items.length,
+        });
+        return;
+      }
+    }
+
     trackEvent("upload_started", { count: items.length });
     // Mark all idle items as analyzing.
     setItems((prev) => prev.map((p) => ({ ...p, status: "analyzing" as const })));
@@ -187,6 +227,36 @@ export default function Home() {
             <p className="text-[#6B7280]">Compare multiple offers. See which is the best deal.</p>
           </div>
 
+          {/* Access tier banner */}
+          {access && (
+            <div className="mb-5 flex items-center justify-center gap-2 text-sm">
+              {access.paid ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1B4332] text-white rounded-full">
+                  <Sparkles className="w-3.5 h-3.5 text-[#B68D40]" />
+                  <span className="font-medium">Multi-Compare unlocked · up to 6 letters</span>
+                </div>
+              ) : access.canAnalyzeFree ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F7F3EC] border border-[#E8E4DC] rounded-full text-[#4A5568]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#B68D40]" />
+                  <span>
+                    <strong className="text-[#1B4332]">1 letter free</strong> · unlock multi-compare for $29
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowGate(true)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F7F3EC] border border-[#E8E4DC] rounded-full text-[#4A5568] hover:border-[#B68D40] transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5 text-[#B68D40]" />
+                  <span>
+                    Free analysis used · <strong className="text-[#1B4332]">Unlock Multi-Compare · $29</strong>
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
           <Dropzone onFiles={handleFiles} disabled={isBusy} />
 
           <FilePreviewList items={items} onRemove={handleRemove} removable={!isAnalyzing} />
@@ -270,6 +340,13 @@ export default function Home() {
           © 2026 FinLit Garden. Helping students graduate debt-free.
         </p>
       </div>
+
+      {showGate && (
+        <PaymentGate
+          attemptedFileCount={items.length}
+          onDismiss={() => setShowGate(false)}
+        />
+      )}
     </main>
   );
 }
