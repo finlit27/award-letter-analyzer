@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { Download } from "lucide-react";
 import type { AwardLetter } from "@/lib/schema";
 import { ComparisonTable } from "./ComparisonTable";
 import { DeclineLoansToggle } from "./DeclineLoansToggle";
@@ -23,9 +24,10 @@ interface Props {
   letters: AwardLetter[];
   errors?: string[];
   shareUrl?: string;
+  paid?: boolean;
 }
 
-export function DashboardShell({ letters, errors = [], shareUrl }: Props) {
+export function DashboardShell({ letters, errors = [], shareUrl, paid = false }: Props) {
   const [declineLoans, setDeclineLoans] = useState(false);
 
   if (letters.length === 0) {
@@ -36,6 +38,17 @@ export function DashboardShell({ letters, errors = [], shareUrl }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Print-only header — hidden on screen, visible when printing */}
+      <div className="hidden print:block border-b border-[#E8E4DC] pb-4 mb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#B68D40]">FinLit Garden</p>
+            <h1 className="text-2xl font-bold text-[#1B4332] font-serif">Award Letter Comparison</h1>
+          </div>
+          <p className="text-xs text-[#6B7280]">Generated {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-[#1B4332] font-serif">Your Comparison</h2>
@@ -46,11 +59,23 @@ export function DashboardShell({ letters, errors = [], shareUrl }: Props) {
             )}
           </p>
         </div>
-        <DeclineLoansToggle value={declineLoans} onChange={setDeclineLoans} />
+        <div className="flex items-center gap-3">
+          {paid && (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="print:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#1B4332] border border-[#1B4332] rounded-lg hover:bg-[#1B4332] hover:text-white transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+          )}
+          <DeclineLoansToggle value={declineLoans} onChange={setDeclineLoans} />
+        </div>
       </div>
 
       {shareUrl && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-[#FDFBF7] border border-[#E8E4DC] text-sm">
+        <div className="print:hidden flex items-center gap-3 p-3 rounded-lg bg-[#FDFBF7] border border-[#E8E4DC] text-sm">
           <span className="text-[#6B7280]">Share this comparison:</span>
           <code className="flex-1 truncate text-[#1B4332]">{shareUrl}</code>
           <button

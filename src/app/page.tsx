@@ -159,7 +159,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#FDFBF7] relative overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-[#E8E4DC]">
+      <header className="print:hidden bg-white border-b border-[#E8E4DC]">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <a
             href="https://finlitgarden.com"
@@ -190,7 +190,7 @@ export default function Home() {
 
       {/* Hero */}
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="max-w-4xl mx-auto text-center mb-12">
+        <div className="print:hidden max-w-4xl mx-auto text-center mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -218,7 +218,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-lg p-6 md:p-10 max-w-3xl mx-auto border border-[#E8E4DC]"
+          className="print:hidden bg-white rounded-2xl shadow-lg p-6 md:p-10 max-w-3xl mx-auto border border-[#E8E4DC]"
         >
           <div className="mb-6 text-center">
             <h2 className="text-2xl font-bold text-[#1B4332] font-serif mb-2">
@@ -332,11 +332,12 @@ export default function Home() {
             <DashboardShell
               letters={state.results.map((r) => r.letter)}
               errors={state.errors.map((e) => `${e.fileName}: ${e.error}`)}
+              paid={access?.paid ?? false}
             />
           </motion.div>
         )}
 
-        <p className="text-center text-[#9CA3AF] text-sm mt-12 pb-8">
+        <p className="print:hidden text-center text-[#9CA3AF] text-sm mt-12 pb-8">
           © 2026 FinLit Garden. Helping students graduate debt-free.
         </p>
       </div>

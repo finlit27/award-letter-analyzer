@@ -158,3 +158,33 @@
 .border-finlit-gold {
   border-color: var(--finlit-gold);
 }
+
+@media print {
+  /* Force colors and backgrounds to render (browsers suppress them by default) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Give the page some breathing room */
+  @page {
+    margin: 0.75in;
+  }
+
+  /* Recharts SVGs clip their overflow — undo that so bars/lines don't get cut off */
+  .recharts-wrapper,
+  .recharts-surface {
+    overflow: visible !important;
+  }
+
+  /* Avoid breaking a college card or chart across pages */
+  .recharts-wrapper,
+  [class*="rounded-xl"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
