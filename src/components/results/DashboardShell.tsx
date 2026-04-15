@@ -59,12 +59,12 @@ export function DashboardShell({ letters, errors = [], shareUrl, paid = false }:
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="print:hidden flex items-center gap-3">
           {paid && (
             <button
               type="button"
               onClick={() => window.print()}
-              className="print:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#1B4332] border border-[#1B4332] rounded-lg hover:bg-[#1B4332] hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#1B4332] border border-[#1B4332] rounded-lg hover:bg-[#1B4332] hover:text-white transition-colors"
             >
               <Download className="w-4 h-4" />
               Download PDF

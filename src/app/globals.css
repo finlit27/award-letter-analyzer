@@ -170,9 +170,10 @@
     background: white !important;
   }
 
-  /* Give the page some breathing room */
+  /* Force landscape — the comparison table is 7 columns wide and belongs in landscape */
   @page {
-    margin: 0.75in;
+    size: landscape;
+    margin: 0.5in;
   }
 
   /* Recharts SVGs clip their overflow — undo that so bars/lines don't get cut off */

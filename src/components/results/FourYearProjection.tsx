@@ -43,7 +43,7 @@ export function FourYearProjection({ letters, declineLoans }: Props) {
           <h3 className="text-lg font-bold text-[#1B4332] font-serif">4-Year Cost Projection</h3>
           <p className="text-sm text-[#6B7280]">Out-of-pocket cost per year, compounded by tuition inflation</p>
         </div>
-        <div className="flex items-center gap-3 min-w-[260px]">
+        <div className="print:hidden flex items-center gap-3 min-w-[260px]">
           <label htmlFor="inflation-slider" className="text-xs text-[#6B7280] uppercase tracking-wider whitespace-nowrap">
             Inflation
           </label>
