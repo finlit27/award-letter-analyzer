@@ -118,7 +118,7 @@ export function ComparisonTable({ letters, declineLoans, inflationRate = 0.05 }:
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-xl border border-[#E8E4DC] shadow-sm">
+    <div className="overflow-x-auto print:overflow-visible bg-white rounded-xl border border-[#E8E4DC] shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-[#FDFBF7] sticky top-0 border-b border-[#E8E4DC]">
           <tr>

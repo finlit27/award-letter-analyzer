@@ -181,6 +181,17 @@
     overflow: visible !important;
   }
 
+  /* Comparison table: shrink font so all 7 columns fit on one page */
+  table {
+    font-size: 0.72rem;
+    width: 100%;
+  }
+
+  /* Unstick the header row — sticky positioning breaks in print */
+  thead {
+    position: static !important;
+  }
+
   /* Avoid breaking a college card or chart across pages */
   .recharts-wrapper,
   [class*="rounded-xl"] {
