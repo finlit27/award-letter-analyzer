@@ -23,7 +23,7 @@ export function CostBreakdownBars({ letters }: Props) {
   }));
 
   return (
-    <div className="w-full h-72 bg-white rounded-xl border border-[#E8E4DC] p-4">
+    <div className="print:hidden w-full h-72 bg-white rounded-xl border border-[#E8E4DC] p-4">
       <h3 className="text-sm font-semibold text-[#1B4332] mb-2 font-serif">Cost Breakdown</h3>
       <ResponsiveContainer width="100%" height="90%">
         <BarChart data={data} layout="vertical" stackOffset="sign" margin={{ left: 8, right: 16 }}>

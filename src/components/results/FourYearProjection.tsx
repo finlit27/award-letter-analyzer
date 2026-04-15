@@ -63,7 +63,7 @@ export function FourYearProjection({ letters, declineLoans }: Props) {
         </div>
       </div>
 
-      <div className="w-full h-64">
+      <div className="print:hidden w-full h-64">
         <ResponsiveContainer>
           <LineChart data={data} margin={{ left: 8, right: 16, top: 8 }}>
             <CartesianGrid stroke="#E8E4DC" strokeDasharray="3 3" />
