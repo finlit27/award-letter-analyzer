@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf, Sparkles, Lock } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw, AlertCircle, Leaf, Sparkles, Lock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { FilePreviewList, type FilePreviewItem } from "@/components/upload/FilePreview";
@@ -26,7 +26,31 @@ export default function Home() {
   const [prepError, setPrepError] = useState<string | null>(null);
   const [access, setAccess] = useState<AccessState | null>(null);
   const [showGate, setShowGate] = useState(false);
+  const [guideEmail, setGuideEmail] = useState("");
+  const [guideStatus, setGuideStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const router = useRouter();
+
+  const CFO_CHECKLIST_URL = "https://drive.google.com/file/d/18KWHQnkFTiAwew-X5jXuJ8TqMUR-YvEJ/view?usp=sharing";
+
+  const handleGuideSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guideEmail) return;
+    setGuideStatus("loading");
+    try {
+      const res = await fetch("https://api.convertkit.com/v3/forms/9354058/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: "8-aLiWJiw-aZ1HOyVZwqVA", email: guideEmail }),
+      });
+      if (!res.ok) throw new Error("Kit API error");
+      setGuideStatus("success");
+      setGuideEmail("");
+      window.open(CFO_CHECKLIST_URL, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error submitting to Kit", error);
+      setGuideStatus("error");
+    }
+  };
 
   const { state, start } = useAnalyzeStream();
 
@@ -214,6 +238,76 @@ export default function Home() {
             </p>
           </motion.div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="print:hidden max-w-2xl mx-auto mb-10 bg-gradient-to-br from-[#1B4332] to-[#143526] rounded-2xl p-6 md:p-8 shadow-xl border border-[#B68D40]/20"
+        >
+          {guideStatus === "success" ? (
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 text-[#B68D40] mb-1">
+                <CheckCircle2 className="w-5 h-5" />
+                <span className="font-bold">Your checklist is opening in a new tab.</span>
+              </div>
+              <a
+                href={CFO_CHECKLIST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#B68D40] hover:text-white underline text-sm font-medium block mt-1"
+              >
+                Didn&apos;t open? Download it here →
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="text-center mb-5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#B68D40]/20 border border-[#B68D40]/30 rounded-full mb-3">
+                  <span className="text-xs font-bold tracking-widest uppercase text-[#B68D40]">
+                    Free Download
+                  </span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-bold text-white font-serif mb-2">
+                  Start With the CFO Checklist
+                </h2>
+                <p className="text-gray-300 text-sm">
+                  The 3 critical mistakes that cost families $10,000+. Delivered free to your inbox.
+                </p>
+              </div>
+              <form
+                onSubmit={handleGuideSubscribe}
+                className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
+              >
+                <input
+                  type="email"
+                  value={guideEmail}
+                  onChange={(e) => setGuideEmail(e.target.value)}
+                  placeholder="parent@example.com"
+                  required
+                  disabled={guideStatus === "loading"}
+                  className="flex-1 px-4 py-3 rounded-lg text-gray-900 bg-white border-2 border-transparent focus:border-[#B68D40] focus:outline-none font-medium"
+                />
+                <button
+                  type="submit"
+                  disabled={guideStatus === "loading"}
+                  className="bg-[#B68D40] text-[#1B4332] font-bold px-6 py-3 rounded-lg hover:bg-white transition-colors whitespace-nowrap min-w-[140px] flex items-center justify-center"
+                >
+                  {guideStatus === "loading" ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Get the Checklist"
+                  )}
+                </button>
+              </form>
+              {guideStatus === "error" && (
+                <p className="text-red-300 text-sm mt-2 text-center flex items-center justify-center gap-1">
+                  <AlertCircle className="w-4 h-4" /> Something went wrong. Please try again.
+                </p>
+              )}
+            </>
+          )}
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
