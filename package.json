@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
+    "@sentry/nextjs": "^10.50.0",
     "@stripe/stripe-js": "^9.2.0",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
