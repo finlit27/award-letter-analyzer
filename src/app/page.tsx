@@ -37,10 +37,10 @@ export default function Home() {
     if (!guideEmail) return;
     setGuideStatus("loading");
     try {
-      const res = await fetch("https://api.convertkit.com/v3/forms/9354058/subscribe", {
+      const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: "8-aLiWJiw-aZ1HOyVZwqVA", email: guideEmail }),
+        body: JSON.stringify({ email: guideEmail, formId: "9354058" }),
       });
       if (!res.ok) throw new Error("Kit API error");
       setGuideStatus("success");
