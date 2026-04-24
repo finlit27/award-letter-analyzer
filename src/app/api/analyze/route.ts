@@ -4,6 +4,7 @@ import { AwardLetterSchema, type AwardLetter } from "@/lib/schema";
 import { prepImage } from "@/lib/image-prep-server";
 import { saveAnalysis } from "@/lib/kv";
 import { sseStream, sseHeaders } from "@/lib/sse";
+import { reconcileGiftAid } from "@/lib/reconcile";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -86,7 +87,7 @@ async function analyzeOne(file: File, webhookUrl: string): Promise<AnalyzeOutcom
     if (!result.success) {
       return { ok: false, fileName, error: "schema validation failed" };
     }
-    return { ok: true, fileName, letter: result.data };
+    return { ok: true, fileName, letter: reconcileGiftAid(result.data) };
   } catch (err) {
     const msg =
       err instanceof DOMException && err.name === "AbortError"
