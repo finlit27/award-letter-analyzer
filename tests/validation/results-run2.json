@@ -27,10 +27,10 @@
       "out_of_pocket_payment": 10530,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 85
+        "value_score": 78
       }
     },
-    "ms": 7439
+    "ms": 7295
   },
   {
     "fileName": "02_private_liberal_arts.pdf",
@@ -63,7 +63,7 @@
         "value_score": 97
       }
     },
-    "ms": 7479
+    "ms": 6888
   },
   {
     "fileName": "03_ivy_league_full_need.pdf",
@@ -93,10 +93,10 @@
       "out_of_pocket_payment": 5105,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 99
+        "value_score": 94
       }
     },
-    "ms": 7031
+    "ms": 7543
   },
   {
     "fileName": "04_out_of_state_gap.pdf",
@@ -129,7 +129,7 @@
         "value_score": 17
       }
     },
-    "ms": 6927
+    "ms": 7220
   },
   {
     "fileName": "05_technical_institute_merit.pdf",
@@ -162,7 +162,7 @@
         "value_score": 92
       }
     },
-    "ms": 7131
+    "ms": 7069
   },
   {
     "fileName": "06_community_college_full.pdf",
@@ -192,10 +192,10 @@
       "out_of_pocket_payment": 18969,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 78
+        "value_score": 85
       }
     },
-    "ms": 6958
+    "ms": 7227
   },
   {
     "fileName": "07_regional_private_loan_heavy.pdf",
@@ -228,7 +228,7 @@
         "value_score": 42
       }
     },
-    "ms": 7590
+    "ms": 7513
   },
   {
     "fileName": "08_athletic_scholarship.pdf",
@@ -261,7 +261,7 @@
         "value_score": 99
       }
     },
-    "ms": 6794
+    "ms": 7193
   },
   {
     "fileName": "09_conservatory_talent.pdf",
@@ -294,7 +294,7 @@
         "value_score": 61
       }
     },
-    "ms": 7085
+    "ms": 6953
   },
   {
     "fileName": "10_faith_based_university.pdf",
@@ -324,9 +324,9 @@
       "out_of_pocket_payment": 7421,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 88
+        "value_score": 85
       }
     },
-    "ms": 7308
+    "ms": 7005
   }
 ]

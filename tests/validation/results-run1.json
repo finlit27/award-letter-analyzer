@@ -27,10 +27,10 @@
       "out_of_pocket_payment": 10530,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 85
+        "value_score": 78
       }
     },
-    "ms": 7439
+    "ms": 9430
   },
   {
     "fileName": "02_private_liberal_arts.pdf",
@@ -63,7 +63,7 @@
         "value_score": 97
       }
     },
-    "ms": 7479
+    "ms": 7609
   },
   {
     "fileName": "03_ivy_league_full_need.pdf",
@@ -93,10 +93,10 @@
       "out_of_pocket_payment": 5105,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 99
+        "value_score": 98
       }
     },
-    "ms": 7031
+    "ms": 7261
   },
   {
     "fileName": "04_out_of_state_gap.pdf",
@@ -129,7 +129,7 @@
         "value_score": 17
       }
     },
-    "ms": 6927
+    "ms": 7929
   },
   {
     "fileName": "05_technical_institute_merit.pdf",
@@ -162,7 +162,7 @@
         "value_score": 92
       }
     },
-    "ms": 7131
+    "ms": 7375
   },
   {
     "fileName": "06_community_college_full.pdf",
@@ -195,7 +195,7 @@
         "value_score": 78
       }
     },
-    "ms": 6958
+    "ms": 7707
   },
   {
     "fileName": "07_regional_private_loan_heavy.pdf",
@@ -218,7 +218,7 @@
         "federal_subsidized": 3500,
         "federal_unsubsidized": 2000,
         "parent_plus": 0,
-        "private_loans": 0
+        "private_loans": 5000
       },
       "work_study": 3000,
       "net_price": 41500,
@@ -228,7 +228,7 @@
         "value_score": 42
       }
     },
-    "ms": 7590
+    "ms": 7191
   },
   {
     "fileName": "08_athletic_scholarship.pdf",
@@ -261,7 +261,7 @@
         "value_score": 99
       }
     },
-    "ms": 6794
+    "ms": 6989
   },
   {
     "fileName": "09_conservatory_talent.pdf",
@@ -291,10 +291,10 @@
       "out_of_pocket_payment": 31369,
       "analysis": {
         "debt_warning": "High",
-        "value_score": 61
+        "value_score": 62
       }
     },
-    "ms": 7085
+    "ms": 6982
   },
   {
     "fileName": "10_faith_based_university.pdf",
@@ -324,9 +324,9 @@
       "out_of_pocket_payment": 7421,
       "analysis": {
         "debt_warning": "Low",
-        "value_score": 88
+        "value_score": 86
       }
     },
-    "ms": 7308
+    "ms": 7209
   }
 ]

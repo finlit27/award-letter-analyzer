@@ -1,0 +1,124 @@
+// PASTE INSTRUCTIONS:
+// 1. Open the Prep image code node in n8n.
+// 2. Click anywhere in the code editor and Cmd+A (or Ctrl+A) to select ALL.
+// 3. Delete the selection.
+// 4. Paste EVERYTHING below this comment block (the whole file from the next
+//    line through the closing brace of the return statement).
+// 5. Click "Test step" with a sample image — should run without JS errors and
+//    return haikuBody / sonnetBody / fileName.
+// 6. Save. Confirm workflow is Active.
+
+// Find the uploaded image binary and build the full Anthropic request body.
+// IMPORTANT: on n8n Cloud, binary.data is a filesystem pointer (e.g. 'filesystem-v2'),
+// NOT the actual base64. We must call getBinaryDataBuffer to read the real bytes.
+const item = items[0];
+const binaries = item.binary || {};
+const keys = Object.keys(binaries);
+if (keys.length === 0) {
+  throw new Error('No binary file received. Available keys: ' + JSON.stringify(Object.keys(item)));
+}
+const key = binaries.pdfFile ? 'pdfFile' : keys[0];
+const binary = binaries[key];
+const buffer = await this.helpers.getBinaryDataBuffer(0, key);
+const base64 = buffer.toString('base64');
+const mime = binary.mimeType || 'image/jpeg';
+
+const prompt = `You are a college financial aid analyst. Analyze this award letter image.
+
+STEP 1 — IDENTIFY EACH LINE ITEM. Categorize every line by TYPE:
+
+GIFT AID (free money — never repaid):
+Keywords: Grant, Scholarship, Award, Merit, SEOG, Pell, TAP
+- state_grant includes state-administered programs even when "state" is not in the name. Examples: Cal Grant A/B, CA College Promise Grant, NJ Tuition Aid Grant, Texas Grant, MA State Grant, Florida Bright Futures.
+- institutional_merit = school-funded scholarships. Examples: school name in title (UC Grant, Pomona College Grant), Athletic Grant-in-Aid, Heritage Scholarship, Go Blue Guarantee Grant, Presidential/Achievement/Talent awards.
+
+LOANS (debt — must be repaid):
+Keywords: Loan, Subsidized, Unsubsidized, PLUS, Direct, Perkins
+- Always extract federal_unsubsidized if a Federal Direct Unsubsidized Loan is listed — do not drop it.
+- parent_plus: extract even from "Additional financing options" sections.
+
+WORK-STUDY (earned money — student must work):
+Keywords: Work-Study, Work Study, Employment, FWS, Federal Work-Study, Student Campus Job
+- Always extract work_study if any work-study line appears — do not drop it.
+
+COST OF ATTENDANCE buckets:
+- direct_costs.tuition: "Tuition" or bundled "Tuition & Fees".
+- direct_costs.housing: SUM of Room + Board + Meals + Dining + Food + Living Allowance. Always include board/meals — don't restrict to room only.
+- direct_costs.fees: Mandatory Fees, Lab Fees, Health Insurance, Residential College Fee, Enrollment Fees.
+- Books, Personal Expenses, Transportation, Travel count toward total_cost_of_attendance but NOT direct_costs.
+
+STEP 2 — CALCULATE:
+- total_gift_aid = grants + scholarships ONLY (no loans, no work-study). When the letter prints a "Gift Aid Subtotal" or "Total Gift Aid" line, read that number directly.
+- net_price = total_cost_of_attendance − total_gift_aid (never negative)
+- out_of_pocket_payment = net_price (loans are OPTIONAL debt)
+
+STEP 3 — RETURN ONLY THIS JSON OBJECT (not an array, no markdown, no fences, no commentary):
+{
+  "college_name": "Name from letterhead",
+  "total_cost_of_attendance": 0,
+  "direct_costs": {"tuition": 0, "housing": 0, "fees": 0},
+  "grants_scholarships": {"institutional_merit": 0, "pell_grant": 0, "state_grant": 0, "total_gift_aid": 0},
+  "loans": {"federal_subsidized": 0, "federal_unsubsidized": 0, "parent_plus": 0, "private_loans": 0},
+  "work_study": 0,
+  "net_price": 0,
+  "out_of_pocket_payment": 0,
+  "analysis": {"debt_warning": "Low|Medium|High|Critical", "value_score": 0}
+}
+
+Debt warning rules:
+- Low: loans < $5,000/yr, no Parent PLUS
+- Medium: loans $5,000–10,000/yr
+- High: loans > $10,000/yr OR net price > $30,000
+- Critical: Parent PLUS present OR net price > $50,000
+
+value_score is 0–100. Higher = better deal.
+
+OUTPUT THE JSON OBJECT ONLY.`;
+
+const strictPrompt = `You are a college financial aid analyst. The previous attempt produced invalid JSON. Be EXTRA strict.
+
+Return ONLY a single JSON object — no markdown, no code fences, no prose, no array wrapper.
+
+Schema (all numbers required, use 0 if unknown):
+{
+  "college_name": string,
+  "total_cost_of_attendance": number,
+  "direct_costs": {"tuition": number, "housing": number, "fees": number},
+  "grants_scholarships": {"institutional_merit": number, "pell_grant": number, "state_grant": number, "total_gift_aid": number},
+  "loans": {"federal_subsidized": number, "federal_unsubsidized": number, "parent_plus": number, "private_loans": number},
+  "work_study": number,
+  "net_price": number,
+  "out_of_pocket_payment": number,
+  "analysis": {"debt_warning": "Low" | "Medium" | "High" | "Critical", "value_score": number}
+}
+
+Rules:
+- total_gift_aid = ONLY grants + scholarships (no loans, no work-study). Read the gift-aid subtotal directly from the letter when present.
+- direct_costs.housing must include Room + Board + Meals + Dining + Food + Living Allowance.
+- state_grant includes state-administered grants like Cal Grant or CA College Promise Grant even when "state" is not in the name.
+- Always extract work_study and federal_unsubsidized if listed; do not drop them.
+- net_price = total_cost_of_attendance − total_gift_aid (never negative)
+- debt_warning: Low <$5k loans/no PLUS, Medium $5–10k, High >$10k or net>$30k, Critical PLUS or net>$50k
+- value_score: 0–100, higher = better deal
+
+OUTPUT THE JSON OBJECT ONLY. NO OTHER TEXT.`;
+
+const makeBody = (model, text) => ({
+  model,
+  max_tokens: 2048,
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
+      { type: 'text', text }
+    ]
+  }]
+});
+
+return [{
+  json: {
+    haikuBody: makeBody('claude-haiku-4-5-20251001', prompt),
+    sonnetBody: makeBody('claude-sonnet-4-6', strictPrompt),
+    fileName: binary.fileName || 'unknown'
+  }
+}];
