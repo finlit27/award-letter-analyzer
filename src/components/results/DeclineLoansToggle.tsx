@@ -9,7 +9,7 @@ export function DeclineLoansToggle({ value, onChange }: Props) {
   return (
     <label className="inline-flex items-center gap-3 cursor-pointer select-none">
       <span className="text-sm font-medium text-[#1B4332]">
-        Decline all optional loans
+        Practice: what if you decline the loans?
       </span>
       <button
         type="button"

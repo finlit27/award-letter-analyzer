@@ -18,7 +18,7 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Award Letter Analyzer | FinLit Garden",
   description:
-    "Upload your college financial aid award letters and get a side-by-side comparison to find the best deal. CFO Strategy for Families.",
+    "Every family its own CFO. Upload your college financial aid award letters and see what each school really costs, side by side.",
   keywords: [
     "financial aid",
     "award letter",
@@ -31,8 +31,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Award Letter Analyzer | FinLit Garden",
     description:
-      "Don't just save, strategize. Upload your award letters and get a side-by-side breakdown like a financial executive.",
+      "Every family its own CFO. Upload your award letters and see what each school really costs, side by side.",
     siteName: "FinLit Garden",
+  },
+  twitter: {
+    card: "summary",
+    title: "Award Letter Analyzer | FinLit Garden",
+    description:
+      "Every family its own CFO. Upload your award letters and see what each school really costs, side by side.",
   },
 };
 

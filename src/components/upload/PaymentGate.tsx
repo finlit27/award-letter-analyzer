@@ -15,10 +15,10 @@ interface PaymentGateProps {
 const UNLOCKS = [
   "Compare up to 6 award letters side-by-side",
   "Full 4-year cost projection with inflation modeling",
-  "Decline-loans scenario — see your out-of-pocket cost",
+  "Decline-loans scenario: see your out-of-pocket cost",
   "Value score + debt warnings for every school",
   "Downloadable PDF comparison for family discussions",
-  "Save your analysis — shareable link for 30 days",
+  "Save your analysis with a shareable link for 30 days",
 ];
 
 export function PaymentGate({ attemptedFileCount, onDismiss }: PaymentGateProps) {
@@ -102,7 +102,7 @@ export function PaymentGate({ attemptedFileCount, onDismiss }: PaymentGateProps)
             <span className="text-sm text-[#6B7280]">one-time · no subscription</span>
           </div>
           <p className="text-xs text-[#9CA3AF] mt-1">
-            Financial advisors charge $200-500/hour for this analysis.
+            Plain numbers, not advice: you see the real cost of each offer and you decide.
           </p>
         </div>
 
