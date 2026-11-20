@@ -126,6 +126,10 @@ export function DashboardShell({ letters, errors = [], shareUrl, paid = false }:
           </ul>
         </div>
       )}
+
+      <p className="text-xs text-[#6B7280] border-t border-[#E8E4DC] pt-4">
+        Education, not personal advice. We teach the decision. You make it.
+      </p>
     </div>
   );
 }

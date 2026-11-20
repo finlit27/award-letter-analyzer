@@ -223,18 +223,18 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E4DC] rounded-full mb-6 shadow-sm">
               <span className="text-[#B68D40]">✦</span>
               <span className="text-sm font-medium text-[#4A5568] uppercase tracking-wider">
-                CFO Strategy for Families
+                Every family its own CFO.
               </span>
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1B4332] font-serif leading-tight mb-6">
-              The Strategic Roadmap to a{" "}
-              <span className="text-[#B68D40] block md:inline">Debt-Free Degree.</span>
+              See what each offer{" "}
+              <span className="text-[#B68D40] block md:inline">really costs before you sign.</span>
             </h1>
 
             <p className="text-lg text-[#4A5568] max-w-2xl mx-auto leading-relaxed mb-8">
-              Don&apos;t just save, strategize. Upload your award letters and get a side-by-side
-              breakdown like a financial executive.
+              Upload your award letters and get a side-by-side breakdown of what each
+              school really costs. Your first full analysis is free.
             </p>
           </motion.div>
         </div>
@@ -272,7 +272,7 @@ export default function Home() {
                   Start With the CFO Checklist
                 </h2>
                 <p className="text-gray-300 text-sm">
-                  The 3 critical mistakes that cost families $10,000+. Delivered free to your inbox.
+                  The 3 most common award letter mistakes to check for. Delivered free to your inbox.
                 </p>
               </div>
               <form
@@ -318,7 +318,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-[#1B4332] font-serif mb-2">
               Upload Your Award Letters
             </h2>
-            <p className="text-[#6B7280]">Compare multiple offers. See which is the best deal.</p>
+            <p className="text-[#6B7280]">Compare multiple offers side by side. Practice before it counts.</p>
           </div>
 
           {/* Access tier banner */}
@@ -432,7 +432,9 @@ export default function Home() {
         )}
 
         <p className="print:hidden text-center text-[#9CA3AF] text-sm mt-12 pb-8">
-          © 2026 FinLit Garden. Helping students graduate debt-free.
+          © 2026 FinLit Garden. Every family its own CFO.
+          <br />
+          Education, not personal advice. We teach the decision. You make it.
         </p>
       </div>
 
